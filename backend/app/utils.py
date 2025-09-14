@@ -10,12 +10,12 @@ client = OpenAI(
 
 def call_gpt_api(prompt: str) -> str:
     """
-    Call Hugging Face API using OpenAI-compatible interface.
+    Call Hugging Face's GPT-OSS-20B model via OpenAI-compatible API.
     Returns the AI response as a string.
     """
     try:
         completion = client.chat.completions.create(
-            model="baidu/ERNIE-4.5-21B-A3B-Thinking",  # Make sure your token has access
+            model="openai/gpt-oss-20b:fireworks-ai",  # Fireworks provider for GPT-OSS-20B
             messages=[{"role": "user", "content": prompt}],
             temperature=0.7,
             max_tokens=500
