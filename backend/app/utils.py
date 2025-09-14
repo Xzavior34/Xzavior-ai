@@ -1,22 +1,25 @@
+# utils.py
 import os
-import openai
+from openai import OpenAI
 
-# Make sure your environment variable is set: OPENAI_API_KEY
-openai.api_key = os.getenv("OPENAI_API_KEY")
+# Initialize Hugging Face OpenAI-compatible client
+client = OpenAI(
+    base_url="https://router.huggingface.co/v1",
+    api_key=os.getenv("HF_TOKEN"),  # Make sure HF_TOKEN is set in Render or Termux
+)
 
 def call_gpt_api(prompt: str) -> str:
     """
-    Call OpenAI API using the latest interface (openai>=1.0.0).
-    Returns the AI response as string.
+    Call Hugging Face API using OpenAI-compatible interface.
+    Returns the AI response as a string.
     """
     try:
-        response = openai.chat.completions.create(
-            model="gpt-3.5-turbo",        # Safe default model
+        completion = client.chat.completions.create(
+            model="moonshotai/Kimi-K2-Instruct",  # or another model available in HF
             messages=[{"role": "user", "content": prompt}],
             temperature=0.7,
             max_tokens=500
         )
-        return response.choices[0].message.content.strip()
+        return completion.choices[0].message.content.strip()
     except Exception as e:
-        # Catch any API or unexpected errors
         return f"Error: {e}"
