@@ -1,4 +1,3 @@
-# utils.py
 import os
 import openai
 
@@ -18,9 +17,6 @@ def call_gpt_api(prompt: str) -> str:
             max_tokens=500
         )
         return response.choices[0].message.content.strip()
-    except openai.error.OpenAIError as e:
-        # Catch API errors and return them
-        return f"Error: {e}"
     except Exception as e:
-        # Catch any other unexpected errors
-        return f"Unexpected Error: {e}"
+        # Catch any API or unexpected errors
+        return f"Error: {e}"
