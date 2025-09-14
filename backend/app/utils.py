@@ -15,7 +15,7 @@ def call_gpt_api(prompt: str) -> str:
     """
     try:
         completion = client.chat.completions.create(
-            model="LLM360/K2-Think",  # Your selected model
+            model="baidu/ERNIE-4.5-21B-A3B-Thinking",  # Make sure your token has access
             messages=[{"role": "user", "content": prompt}],
             temperature=0.7,
             max_tokens=500
