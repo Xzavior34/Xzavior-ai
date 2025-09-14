@@ -4,7 +4,7 @@ import styled from "styled-components";
 
 // ----- Styled Components -----
 const Container = styled.div`
-  background-color: #0b1d3f; // premium dark blue
+  background-color: #0b1d3f;
   min-height: 100vh;
   display: flex;
   justify-content: center;
@@ -118,33 +118,46 @@ function App() {
 
   // Initialize WebSocket
   useEffect(() => {
-    ws.current = new WebSocket(`${API_URL.replace(/^http/, "wss")}/ws`);
+    try {
+      ws.current = new WebSocket("wss://xzavior-ai.onrender.com/ws");
 
-    ws.current.onmessage = (event) => {
-      const botMsg = { user: false, text: event.data, time: new Date().toLocaleTimeString() };
-      setMessages(prev => [...prev, botMsg]);
-      speak(botMsg.text);
-    };
+      ws.current.onmessage = (event) => {
+        const botMsg = { user: false, text: event.data, time: new Date().toLocaleTimeString() };
+        setMessages(prev => [...prev, botMsg]);
+        speak(botMsg.text);
+      };
 
-    ws.current.onopen = () => console.log("WebSocket connected");
-    ws.current.onclose = () => console.log("WebSocket disconnected");
+      ws.current.onopen = () => console.log("WebSocket connected");
+      ws.current.onclose = () => console.log("WebSocket disconnected");
+      ws.current.onerror = (err) => console.error("WebSocket error:", err);
+    } catch (err) {
+      console.error("WebSocket initialization failed:", err);
+    }
 
-    return () => ws.current.close();
+    return () => ws.current && ws.current.close();
   }, []);
 
   // Send message
   const sendMessage = () => {
     if (!input.trim()) return;
     const userMsg = { user: true, text: input, time: new Date().toLocaleTimeString() };
-    ws.current.send(input);
-    setMessages(prev => [...prev, userMsg]);
-    setInput("");
+    if (ws.current.readyState === WebSocket.OPEN) {
+      ws.current.send(input);
+      setMessages(prev => [...prev, userMsg]);
+      setInput("");
+    } else {
+      console.error("WebSocket not connected");
+    }
   };
 
   const handleKeyPress = (e) => { if (e.key === "Enter") sendMessage(); };
 
   // Voice input
   const voiceInput = () => {
+    if (!window.webkitSpeechRecognition) {
+      alert("Speech recognition not supported in this browser.");
+      return;
+    }
     const recognition = new window.webkitSpeechRecognition();
     recognition.onresult = (e) => setInput(e.results[0][0].transcript);
     recognition.start();
@@ -152,17 +165,22 @@ function App() {
 
   // Text-to-speech
   const speak = (text) => {
+    if (!window.speechSynthesis) return;
     const utter = new SpeechSynthesisUtterance(text);
     window.speechSynthesis.speak(utter);
   };
 
   // File upload
   const handleFileUpload = async (file) => {
-    const form = new FormData();
-    form.append("file", file);
-    const res = await fetch(`${API_URL}/upload`, { method: "POST", body: form });
-    const data = await res.json();
-    setMessages(prev => [...prev, { user: false, text: `File "${data.filename}" processed: ${data.analysis}`, time: new Date().toLocaleTimeString() }]);
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      const res = await fetch(`${API_URL}/upload`, { method: "POST", body: form });
+      const data = await res.json();
+      setMessages(prev => [...prev, { user: false, text: `File "${data.filename}" processed: ${data.analysis}`, time: new Date().toLocaleTimeString() }]);
+    } catch (err) {
+      console.error("File upload failed:", err);
+    }
   };
 
   return (
