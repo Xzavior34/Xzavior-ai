@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import ScrollToBottom from "react-scroll-to-bottom";
 import styled from "styled-components";
 
@@ -103,7 +103,6 @@ const API_URL = "https://xzavior-ai.onrender.com";
 function App() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
-  const ws = useRef(null);
 
   // Load chat history
   useEffect(() => {
@@ -116,37 +115,29 @@ function App() {
     localStorage.setItem("chatHistory", JSON.stringify(messages));
   }, [messages]);
 
-  // Initialize WebSocket
-  useEffect(() => {
-    try {
-      ws.current = new WebSocket("wss://xzavior-ai.onrender.com/ws");
-
-      ws.current.onmessage = (event) => {
-        const botMsg = { user: false, text: event.data, time: new Date().toLocaleTimeString() };
-        setMessages(prev => [...prev, botMsg]);
-        speak(botMsg.text);
-      };
-
-      ws.current.onopen = () => console.log("WebSocket connected");
-      ws.current.onclose = () => console.log("WebSocket disconnected");
-      ws.current.onerror = (err) => console.error("WebSocket error:", err);
-    } catch (err) {
-      console.error("WebSocket initialization failed:", err);
-    }
-
-    return () => ws.current && ws.current.close();
-  }, []);
-
-  // Send message
-  const sendMessage = () => {
+  // Send message via HTTP POST
+  const sendMessage = async () => {
     if (!input.trim()) return;
+
     const userMsg = { user: true, text: input, time: new Date().toLocaleTimeString() };
-    if (ws.current.readyState === WebSocket.OPEN) {
-      ws.current.send(input);
-      setMessages(prev => [...prev, userMsg]);
-      setInput("");
-    } else {
-      console.error("WebSocket not connected");
+    setMessages(prev => [...prev, userMsg]);
+    setInput("");
+
+    try {
+      const response = await fetch(`${API_URL}/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ message: input })
+      });
+
+      const data = await response.json();
+      const botMsg = { user: false, text: data.reply, time: new Date().toLocaleTimeString() };
+      setMessages(prev => [...prev, botMsg]);
+      speak(botMsg.text);
+    } catch (err) {
+      console.error("Error sending message:", err);
+      const errorMsg = { user: false, text: "Failed to get response. Try again.", time: new Date().toLocaleTimeString() };
+      setMessages(prev => [...prev, errorMsg]);
     }
   };
 
