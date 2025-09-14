@@ -1,6 +1,7 @@
-from fastapi import FastAPI, WebSocket, UploadFile, File
+from fastapi import FastAPI, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
 from app.utils import call_gpt_api
+import os
 
 app = FastAPI()
 
@@ -13,25 +14,15 @@ app.add_middleware(
 )
 
 # -------------------
-# WebSocket for chat
+# Chat endpoint (HTTP POST)
 # -------------------
-@app.websocket("/ws")
-async def websocket_endpoint(ws: WebSocket):
-    await ws.accept()
-    while True:
-        try:
-            # Receive message from frontend
-            data = await ws.receive_text()
-            
-            # Call GPT API
-            response_text = call_gpt_api(data)
-            
-            # Send GPT response back
-            await ws.send_text(response_text)
-        except Exception as e:
-            await ws.close()
-            print("WebSocket closed:", e)
-            break
+@app.post("/chat")
+async def chat(message: str = Form(...)):
+    try:
+        response_text = call_gpt_api(message)
+        return {"response": response_text}
+    except Exception as e:
+        return {"error": str(e)}
 
 # -------------------
 # File upload endpoint
@@ -40,8 +31,15 @@ async def websocket_endpoint(ws: WebSocket):
 async def upload_file(file: UploadFile = File(...)):
     try:
         content = await file.read()
-        # Optional: send content to GPT for analysis
         analysis = call_gpt_api(f"Analyze this file content:\n{content.decode()}")
         return {"filename": file.filename, "analysis": analysis}
     except Exception as e:
         return {"error": str(e)}
+
+# -------------------
+# Run with dynamic Render port
+# -------------------
+if __name__ == "__main__":
+    import uvicorn
+    port = int(os.environ.get("PORT", 8000))
+    uvicorn.run(app, host="0.0.0.0", port=port)
