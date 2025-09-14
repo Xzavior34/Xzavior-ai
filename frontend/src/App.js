@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import ScrollToBottom from "react-scroll-to-bottom";
 import styled, { keyframes } from "styled-components";
 
@@ -21,7 +21,7 @@ const ChatBox = styled.div`
   flex-direction: column;
   border-radius: 20px;
   overflow: hidden;
-  background-color: #0f2a57;
+  background-color: #0d1b3f;
   box-shadow: 0 8px 40px rgba(0,0,0,0.5);
 
   @media (max-width: 768px) {
@@ -39,11 +39,6 @@ const Header = styled.div`
   text-align: center;
   border-bottom: 1px solid #1a365f;
   letter-spacing: 1px;
-
-  @media (max-width: 768px) {
-    font-size: 1.4rem;
-    padding: 15px;
-  }
 `;
 
 const MessagesContainer = styled(ScrollToBottom)`
@@ -53,10 +48,6 @@ const MessagesContainer = styled(ScrollToBottom)`
   flex-direction: column;
   gap: 12px;
   overflow-y: auto;
-
-  @media (max-width: 768px) {
-    padding: 10px;
-  }
 `;
 
 const fadeIn = keyframes`
@@ -74,16 +65,9 @@ const Message = styled.div`
   font-size: 15px;
   box-shadow: 0 3px 12px rgba(0,0,0,0.3);
   animation: ${fadeIn} 0.3s ease-out;
-  position: relative;
   display: flex;
-  align-items: center;
-  gap: 8px;
-
-  @media (max-width: 768px) {
-    font-size: 14px;
-    max-width: 85%;
-    padding: 10px 14px;
-  }
+  flex-direction: column;
+  gap: 4px;
 `;
 
 const Avatar = styled.div`
@@ -91,53 +75,39 @@ const Avatar = styled.div`
   height: 28px;
   border-radius: 50%;
   background-color: ${props => (props.user ? "#fff" : "#3da9fc")};
-  flex-shrink: 0;
-
-  @media (max-width: 768px) {
-    width: 22px;
-    height: 22px;
-  }
 `;
 
 const Timestamp = styled.span`
-  display: block;
   font-size: 10px;
   color: #ccc;
-  margin-top: 4px;
-  text-align: right;
+  align-self: flex-end;
 `;
 
 const InputContainer = styled.div`
   display: flex;
+  gap: 8px;
   padding: 12px;
   background-color: #091a33;
-  gap: 8px;
+  border-top: 1px solid #1a365f;
 
   @media (max-width: 768px) {
-    flex-direction: column;
-    gap: 6px;
-    padding: 10px;
+    flex-direction: row;
   }
 `;
 
 const TextInput = styled.input`
   flex: 1;
   padding: 14px;
-  border-radius: 20px;
+  border-radius: 25px;
   border: none;
   outline: none;
   font-size: 16px;
-
-  @media (max-width: 768px) {
-    font-size: 14px;
-    padding: 12px;
-  }
 `;
 
 const Button = styled.button`
-  padding: 12px 18px;
+  padding: 14px 20px;
+  border-radius: 25px;
   border: none;
-  border-radius: 20px;
   background-color: #3da9fc;
   color: #fff;
   font-weight: bold;
@@ -145,28 +115,19 @@ const Button = styled.button`
   transition: 0.2s;
 
   &:hover { background-color: #3590d0; }
-
-  @media (max-width: 768px) {
-    padding: 10px 14px;
-    font-size: 14px;
-  }
 `;
 
 const FileButton = styled.label`
-  padding: 12px 18px;
+  padding: 14px 20px;
   background-color: #3da9fc;
   color: #fff;
-  border-radius: 20px;
+  border-radius: 25px;
   font-weight: bold;
   cursor: pointer;
-  transition: 0.2s;
 
   &:hover { background-color: #3590d0; }
 
-  @media (max-width: 768px) {
-    padding: 10px 14px;
-    font-size: 14px;
-  }
+  input { display: none; }
 `;
 
 // ----- Backend URL -----
@@ -178,30 +139,25 @@ function App() {
   const [input, setInput] = useState("");
   const [typing, setTyping] = useState(false);
 
-  useEffect(() => {
-    const saved = JSON.parse(localStorage.getItem("chatHistory")) || [];
-    setMessages(saved);
-  }, []);
-
-  useEffect(() => {
-    localStorage.setItem("chatHistory", JSON.stringify(messages));
-  }, [messages]);
-
   const sendMessage = async () => {
     if (!input.trim()) return;
+
     const userMsg = { user: true, text: input, time: new Date().toLocaleTimeString() };
     setMessages(prev => [...prev, userMsg]);
     setInput("");
     setTyping(true);
 
     try {
+      // FormData for FastAPI Form
+      const form = new FormData();
+      form.append("message", input);
+
       const response = await fetch(`${API_URL}/chat`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ message: input })
+        body: form
       });
       const data = await response.json();
-      const botMsg = { user: false, text: data.response, time: new Date().toLocaleTimeString() };
+      const botMsg = { user: false, text: data.reply, time: new Date().toLocaleTimeString() };
       setMessages(prev => [...prev, botMsg]);
       setTyping(false);
       speak(botMsg.text);
@@ -238,6 +194,8 @@ function App() {
     } catch (err) { console.error(err); }
   };
 
+  const clearChat = () => setMessages([]);
+
   return (
     <Container>
       <ChatBox>
@@ -264,8 +222,9 @@ function App() {
           <Button onClick={voiceInput}>🎤</Button>
           <FileButton>
             Upload File
-            <input type="file" onChange={(e) => handleFileUpload(e.target.files[0])} style={{ display: "none" }} />
+            <input type="file" onChange={(e) => handleFileUpload(e.target.files[0])} />
           </FileButton>
+          <Button onClick={clearChat}>Clear</Button>
         </InputContainer>
       </ChatBox>
     </Container>
