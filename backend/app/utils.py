@@ -15,7 +15,7 @@ def call_gpt_api(prompt: str) -> str:
     """
     try:
         completion = client.chat.completions.create(
-            model="moonshotai/Kimi-K2-Instruct",  # or another model available in HF
+            model="LLM360/K2-Think",  # Your selected model
             messages=[{"role": "user", "content": prompt}],
             temperature=0.7,
             max_tokens=500
