@@ -70,6 +70,9 @@ const Button = styled.button`
   cursor: pointer;
 `;
 
+// ----- Backend URL -----
+const API_URL = "https://xzavior-ai.onrender.com";
+
 // ----- Main App -----
 function App() {
   const [messages, setMessages] = useState([]);
@@ -89,7 +92,7 @@ function App() {
 
   // Initialize WebSocket
   useEffect(() => {
-    ws.current = new WebSocket("ws://10.254.0.132:8000/ws"); // <-- replace with your Termux IP
+    ws.current = new WebSocket(`${API_URL.replace(/^http/, "ws")}/ws`);
 
     ws.current.onmessage = (event) => {
       const botMsg = { user: false, text: event.data };
@@ -130,7 +133,7 @@ function App() {
   const handleFileUpload = async (file) => {
     const form = new FormData();
     form.append("file", file);
-    const res = await fetch("http://10.254.0.132:8000/upload", { // <-- replace with your Termux IP
+    const res = await fetch(`${API_URL}/upload`, {
       method: "POST",
       body: form
     });
