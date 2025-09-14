@@ -4,7 +4,7 @@ import styled, { keyframes } from "styled-components";
 
 // ----- Styled Components -----
 const Container = styled.div`
-  background: linear-gradient(180deg, #0b1d3f, #0f3057);
+  background: linear-gradient(180deg, #0a1b3f, #0c2a57);
   min-height: 100vh;
   display: flex;
   justify-content: center;
@@ -38,7 +38,6 @@ const Header = styled.div`
   font-weight: bold;
   text-align: center;
   border-bottom: 1px solid #1a365f;
-  letter-spacing: 1px;
 `;
 
 const MessagesContainer = styled(ScrollToBottom)`
@@ -85,18 +84,16 @@ const Timestamp = styled.span`
 
 const InputContainer = styled.div`
   display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   gap: 8px;
   padding: 12px;
   background-color: #091a33;
   border-top: 1px solid #1a365f;
-
-  @media (max-width: 768px) {
-    flex-direction: row;
-  }
 `;
 
 const TextInput = styled.input`
-  flex: 1;
+  flex: 1 1 100%;
   padding: 14px;
   border-radius: 25px;
   border: none;
@@ -105,7 +102,8 @@ const TextInput = styled.input`
 `;
 
 const Button = styled.button`
-  padding: 14px 20px;
+  flex: 1 1 auto;
+  padding: 12px 20px;
   border-radius: 25px;
   border: none;
   background-color: #3da9fc;
@@ -117,17 +115,52 @@ const Button = styled.button`
   &:hover { background-color: #3590d0; }
 `;
 
-const FileButton = styled.label`
-  padding: 14px 20px;
+const CircleButton = styled.button`
+  width: 45px;
+  height: 45px;
+  border-radius: 50%;
+  border: none;
   background-color: #3da9fc;
   color: #fff;
-  border-radius: 25px;
+  font-size: 18px;
+  cursor: pointer;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition: 0.2s;
+
+  &:hover { background-color: #3590d0; }
+
+  @media (max-width: 768px) {
+    width: 40px;
+    height: 40px;
+    font-size: 16px;
+  }
+`;
+
+const FileButton = styled.label`
+  width: 45px;
+  height: 45px;
+  border-radius: 50%;
+  background-color: #3da9fc;
+  color: #fff;
   font-weight: bold;
   cursor: pointer;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 18px;
+  transition: 0.2s;
 
   &:hover { background-color: #3590d0; }
 
   input { display: none; }
+
+  @media (max-width: 768px) {
+    width: 40px;
+    height: 40px;
+    font-size: 16px;
+  }
 `;
 
 // ----- Backend URL -----
@@ -148,7 +181,6 @@ function App() {
     setTyping(true);
 
     try {
-      // FormData for FastAPI Form
       const form = new FormData();
       form.append("message", input);
 
@@ -160,7 +192,6 @@ function App() {
       const botMsg = { user: false, text: data.reply, time: new Date().toLocaleTimeString() };
       setMessages(prev => [...prev, botMsg]);
       setTyping(false);
-      speak(botMsg.text);
     } catch (err) {
       console.error(err);
       const errorMsg = { user: false, text: "Failed to get response. Try again.", time: new Date().toLocaleTimeString() };
@@ -178,7 +209,7 @@ function App() {
     recognition.start();
   };
 
-  const speak = (text) => {
+  const speakMessage = (text) => {
     if (!window.speechSynthesis) return;
     const utter = new SpeechSynthesisUtterance(text);
     window.speechSynthesis.speak(utter);
@@ -205,11 +236,15 @@ function App() {
             <Message key={i} user={msg.user}>
               {!msg.user && <Avatar />}
               {msg.text}
+              {!msg.user && (
+                <CircleButton onClick={() => speakMessage(msg.text)} style={{fontSize:"14px"}}>🔊</CircleButton>
+              )}
               <Timestamp>{msg.time}</Timestamp>
             </Message>
           ))}
           {typing && <Message user={false}><Avatar />Xzavior AI is typing...</Message>}
         </MessagesContainer>
+
         <InputContainer>
           <TextInput
             type="text"
@@ -219,12 +254,12 @@ function App() {
             placeholder="Type a message..."
           />
           <Button onClick={sendMessage}>Send</Button>
-          <Button onClick={voiceInput}>🎤</Button>
+          <CircleButton onClick={voiceInput}>🎤</CircleButton>
           <FileButton>
-            Upload File
+            📎
             <input type="file" onChange={(e) => handleFileUpload(e.target.files[0])} />
           </FileButton>
-          <Button onClick={clearChat}>Clear</Button>
+          <CircleButton onClick={clearChat}>🗑️</CircleButton>
         </InputContainer>
       </ChatBox>
     </Container>
