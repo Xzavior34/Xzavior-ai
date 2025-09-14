@@ -20,7 +20,8 @@ app.add_middleware(
 async def chat(message: str = Form(...)):
     try:
         response_text = call_gpt_api(message)
-        return {"response": response_text}
+        # Return field "reply" to match frontend
+        return {"reply": response_text}
     except Exception as e:
         return {"error": str(e)}
 
