@@ -4,25 +4,35 @@ import styled from "styled-components";
 
 // ----- Styled Components -----
 const Container = styled.div`
-  background-color: #0a2342; // dark blue
+  background-color: #0b1d3f; // premium dark blue
   min-height: 100vh;
   display: flex;
   justify-content: center;
   align-items: center;
   padding: 20px;
-  color: #fff;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 `;
 
 const ChatBox = styled.div`
   width: 100%;
-  max-width: 600px;
-  height: 80vh;
+  max-width: 700px;
+  height: 85vh;
   display: flex;
   flex-direction: column;
-  border-radius: 12px;
+  border-radius: 15px;
   overflow: hidden;
-  background-color: #0f3057;
-  box-shadow: 0 0 20px rgba(0,0,0,0.3);
+  background-color: #0f2a57;
+  box-shadow: 0 0 30px rgba(0,0,0,0.5);
+`;
+
+const Header = styled.div`
+  padding: 15px;
+  background-color: #091a33;
+  color: #fff;
+  font-size: 1.5rem;
+  font-weight: bold;
+  text-align: center;
+  border-bottom: 1px solid #1a365f;
 `;
 
 const MessagesContainer = styled(ScrollToBottom)`
@@ -32,28 +42,30 @@ const MessagesContainer = styled(ScrollToBottom)`
   flex-direction: column;
   gap: 10px;
   overflow-y: auto;
+  background-color: #0f3057;
 `;
 
 const Message = styled.div`
   align-self: ${props => (props.user ? "flex-end" : "flex-start")};
-  background-color: ${props => (props.user ? "#3da9fc" : "#90e0ef")};
-  color: #000;
-  padding: 10px 15px;
+  background-color: ${props => (props.user ? "#3da9fc" : "#1f3c70")};
+  color: ${props => (props.user ? "#000" : "#fff")};
+  padding: 12px 18px;
   border-radius: 20px;
   max-width: 75%;
   word-wrap: break-word;
+  font-size: 15px;
 `;
 
 const InputContainer = styled.div`
   display: flex;
   padding: 10px;
-  background-color: #0a2342;
+  background-color: #091a33;
   gap: 5px;
 `;
 
 const TextInput = styled.input`
   flex: 1;
-  padding: 10px;
+  padding: 12px;
   border-radius: 12px;
   border: none;
   outline: none;
@@ -79,13 +91,13 @@ function App() {
   const [input, setInput] = useState("");
   const ws = useRef(null);
 
-  // Load chat history from localStorage
+  // Load chat history
   useEffect(() => {
     const saved = JSON.parse(localStorage.getItem("chatHistory")) || [];
     setMessages(saved);
   }, []);
 
-  // Save chat history whenever messages change
+  // Save chat history
   useEffect(() => {
     localStorage.setItem("chatHistory", JSON.stringify(messages));
   }, [messages]);
@@ -106,7 +118,7 @@ function App() {
     return () => ws.current.close();
   }, []);
 
-  // Send message to WebSocket
+  // Send message
   const sendMessage = () => {
     if (!input.trim()) return;
     ws.current.send(input);
@@ -121,12 +133,6 @@ function App() {
     const recognition = new window.webkitSpeechRecognition();
     recognition.onresult = (e) => setInput(e.results[0][0].transcript);
     recognition.start();
-  };
-
-  // Text-to-speech
-  const speak = (text) => {
-    const utter = new SpeechSynthesisUtterance(text);
-    window.speechSynthesis.speak(utter);
   };
 
   // File upload
@@ -144,6 +150,7 @@ function App() {
   return (
     <Container>
       <ChatBox>
+        <Header>Xzavior AI</Header>
         <MessagesContainer>
           {messages.map((msg, i) => (
             <Message key={i} user={msg.user}>{msg.text}</Message>
