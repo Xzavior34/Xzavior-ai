@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import ScrollToBottom from "react-scroll-to-bottom";
 import styled, { keyframes } from "styled-components";
 
@@ -7,14 +7,21 @@ const Container = styled.div`
   background-color: #000;
   min-height: 100vh;
   display: flex;
-  justify-content: center;
-  align-items: center;
+  flex-direction: column;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 `;
 
+const Header = styled.div`
+  padding: 15px;
+  text-align: center;
+  font-size: 18px;
+  font-weight: bold;
+  color: #fff;
+  border-bottom: 1px solid #222;
+`;
+
 const ChatBox = styled.div`
-  width: 100%;
-  height: 100vh;
+  flex: 1;
   display: flex;
   flex-direction: column;
 `;
@@ -55,50 +62,62 @@ const Timestamp = styled.span`
 
 const InputContainer = styled.div`
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  padding: 12px;
+  align-items: center;
+  padding: 10px;
   background-color: #000;
-  border-top: 1px solid #333;
+  border-top: 1px solid #222;
+  gap: 8px;
+`;
+
+const InputWrapper = styled.div`
+  flex: 1;
+  display: flex;
+  align-items: center;
+  background: #111;
+  border: 1px solid #333;
+  border-radius: 25px;
+  padding: 5px 10px;
 `;
 
 const TextInput = styled.input`
-  flex: 1 1 100%;
-  padding: 14px;
-  border-radius: 25px;
-  border: 1px solid #333;
+  flex: 1;
+  padding: 10px;
+  border: none;
   outline: none;
   font-size: 16px;
-  background-color: #111;
+  background: transparent;
   color: #fff;
 `;
 
+const SendButton = styled.button`
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: none;
+  background-color: #1abc9c;
+  color: #fff;
+  font-size: 18px;
+  cursor: pointer;
+
+  &:hover { background-color: #16a085; }
+`;
+
 const CircleButton = styled.button`
-  width: 45px;
-  height: 45px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   border: none;
   background-color: #fff;
   color: #000;
   font-size: 18px;
   cursor: pointer;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  transition: 0.2s;
 
   &:hover { background-color: #eee; }
-
-  @media (max-width: 768px) {
-    width: 40px;
-    height: 40px;
-    font-size: 16px;
-  }
 `;
 
 const FileButton = styled.label`
-  width: 45px;
-  height: 45px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   background-color: #fff;
   color: #000;
@@ -111,12 +130,6 @@ const FileButton = styled.label`
   input { display: none; }
 
   &:hover { background-color: #eee; }
-
-  @media (max-width: 768px) {
-    width: 40px;
-    height: 40px;
-    font-size: 16px;
-  }
 `;
 
 // ----- Backend URL -----
@@ -142,8 +155,9 @@ function App() {
 
       const response = await fetch(`${API_URL}/chat`, { method: "POST", body: form });
       const data = await response.json();
-      // Start animated typing
-      animateBotMessage(data.reply);
+      const botMsg = { user: false, text: data.reply, time: new Date().toLocaleTimeString() };
+      setMessages(prev => [...prev, botMsg]);
+      setTyping(false);
     } catch (err) {
       console.error(err);
       setMessages(prev => [...prev, { user: false, text: "Failed to get response.", time: new Date().toLocaleTimeString() }]);
@@ -151,42 +165,7 @@ function App() {
     }
   };
 
-  // Animate AI typing
-  const animateBotMessage = (fullText) => {
-    setTyping(true);
-    let i = 0;
-    const interval = setInterval(() => {
-      i++;
-      const partialText = fullText.slice(0, i);
-      setMessages(prev => {
-        const last = prev[prev.length - 1];
-        if (last && !last.user) {
-          return [...prev.slice(0, -1), { ...last, text: partialText }];
-        } else {
-          return [...prev, { user: false, text: partialText, time: new Date().toLocaleTimeString() }];
-        }
-      });
-      if (i >= fullText.length) {
-        clearInterval(interval);
-        setTyping(false);
-      }
-    }, 25); // 25ms per character
-  };
-
   const handleKeyPress = (e) => { if (e.key === "Enter") sendMessage(); };
-
-  const voiceInput = () => {
-    if (!window.webkitSpeechRecognition) return alert("Speech recognition not supported.");
-    const recognition = new window.webkitSpeechRecognition();
-    recognition.onresult = (e) => setInput(e.results[0][0].transcript);
-    recognition.start();
-  };
-
-  const speakMessage = (text) => {
-    if (!window.speechSynthesis) return;
-    const utter = new SpeechSynthesisUtterance(text);
-    window.speechSynthesis.speak(utter);
-  };
 
   const handleFileUpload = async (file) => {
     try {
@@ -194,20 +173,18 @@ function App() {
       form.append("file", file);
       const res = await fetch(`${API_URL}/upload`, { method: "POST", body: form });
       const data = await res.json();
-      animateBotMessage(`File "${data.filename}" processed: ${data.analysis}`);
+      setMessages(prev => [...prev, { user: false, text: `File "${data.filename}" processed: ${data.analysis}`, time: new Date().toLocaleTimeString() }]);
     } catch (err) { console.error(err); }
   };
 
-  const clearChat = () => setMessages([]);
-
   return (
     <Container>
+      <Header>Xzavior AI</Header>
       <ChatBox>
         <MessagesContainer>
           {messages.map((msg, i) => (
             <Message key={i} user={msg.user}>
               {msg.text}
-              {!msg.user && <CircleButton onClick={() => speakMessage(msg.text)} style={{fontSize:"14px"}}>🔊</CircleButton>}
               <Timestamp>{msg.time}</Timestamp>
             </Message>
           ))}
@@ -215,20 +192,22 @@ function App() {
         </MessagesContainer>
 
         <InputContainer>
-          <TextInput
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyPress={handleKeyPress}
-            placeholder="Type a message..."
-          />
-          <CircleButton onClick={sendMessage}>➡️</CircleButton>
-          <CircleButton onClick={voiceInput}>🎤</CircleButton>
+          <InputWrapper>
+            <TextInput
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyPress={handleKeyPress}
+              placeholder="Type a message..."
+            />
+            <SendButton onClick={sendMessage}>➡️</SendButton>
+          </InputWrapper>
+          <CircleButton onClick={() => alert("Voice input soon")}>🎤</CircleButton>
           <FileButton>
             📎
             <input type="file" onChange={(e) => handleFileUpload(e.target.files[0])} />
           </FileButton>
-          <CircleButton onClick={clearChat}>🗑️</CircleButton>
+          <CircleButton onClick={() => setMessages([])}>🗑️</CircleButton>
         </InputContainer>
       </ChatBox>
     </Container>
