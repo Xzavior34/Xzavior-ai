@@ -11,6 +11,7 @@ def call_gpt_api(prompt: str) -> str:
             temperature=0.7,
             max_tokens=500
         )
-        return response.choices[0].message.content
+        return response.choices[0].message.content.strip()
     except Exception as e:
+        print(f"GPT API Error: {e}")  # logs error in Render console
         return f"Error: {e}"
