@@ -2,7 +2,7 @@
   "name": "xzavior-ai-frontend",
   "version": "1.0.0",
   "private": true,
-  "homepage": "https://Xzavior34.github.io/Xzavior-ai",
+  "homepage": "https://xzavior34.github.io/Xzavior-ai",
   "dependencies": {
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
