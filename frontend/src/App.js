@@ -29,7 +29,7 @@ const Header = styled.div`
   padding: 15px;
   background-color: #091a33;
   color: #fff;
-  font-size: 1.5rem;
+  font-size: 1.6rem;
   font-weight: bold;
   text-align: center;
   border-bottom: 1px solid #1a365f;
@@ -54,6 +54,16 @@ const Message = styled.div`
   max-width: 75%;
   word-wrap: break-word;
   font-size: 15px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  position: relative;
+`;
+
+const Timestamp = styled.span`
+  display: block;
+  font-size: 10px;
+  color: #ccc;
+  margin-top: 4px;
+  text-align: right;
 `;
 
 const InputContainer = styled.div`
@@ -80,6 +90,10 @@ const Button = styled.button`
   color: #fff;
   font-weight: bold;
   cursor: pointer;
+  transition: 0.2s;
+  &:hover {
+    background-color: #3590d0;
+  }
 `;
 
 // ----- Backend URL -----
@@ -104,10 +118,10 @@ function App() {
 
   // Initialize WebSocket
   useEffect(() => {
-    ws.current = new WebSocket(`${API_URL.replace(/^http/, "ws")}/ws`);
+    ws.current = new WebSocket(`${API_URL.replace(/^http/, "wss")}/ws`);
 
     ws.current.onmessage = (event) => {
-      const botMsg = { user: false, text: event.data };
+      const botMsg = { user: false, text: event.data, time: new Date().toLocaleTimeString() };
       setMessages(prev => [...prev, botMsg]);
       speak(botMsg.text);
     };
@@ -121,8 +135,9 @@ function App() {
   // Send message
   const sendMessage = () => {
     if (!input.trim()) return;
+    const userMsg = { user: true, text: input, time: new Date().toLocaleTimeString() };
     ws.current.send(input);
-    setMessages(prev => [...prev, { user: true, text: input }]);
+    setMessages(prev => [...prev, userMsg]);
     setInput("");
   };
 
@@ -135,16 +150,19 @@ function App() {
     recognition.start();
   };
 
+  // Text-to-speech
+  const speak = (text) => {
+    const utter = new SpeechSynthesisUtterance(text);
+    window.speechSynthesis.speak(utter);
+  };
+
   // File upload
   const handleFileUpload = async (file) => {
     const form = new FormData();
     form.append("file", file);
-    const res = await fetch(`${API_URL}/upload`, {
-      method: "POST",
-      body: form
-    });
+    const res = await fetch(`${API_URL}/upload`, { method: "POST", body: form });
     const data = await res.json();
-    setMessages(prev => [...prev, { user: false, text: `File "${data.filename}" processed: ${data.analysis}` }]);
+    setMessages(prev => [...prev, { user: false, text: `File "${data.filename}" processed: ${data.analysis}`, time: new Date().toLocaleTimeString() }]);
   };
 
   return (
@@ -153,7 +171,10 @@ function App() {
         <Header>Xzavior AI</Header>
         <MessagesContainer>
           {messages.map((msg, i) => (
-            <Message key={i} user={msg.user}>{msg.text}</Message>
+            <Message key={i} user={msg.user}>
+              {msg.text}
+              <Timestamp>{msg.time}</Timestamp>
+            </Message>
           ))}
         </MessagesContainer>
         <InputContainer>
