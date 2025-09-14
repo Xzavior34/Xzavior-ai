@@ -1,46 +1,23 @@
-from fastapi import FastAPI, UploadFile, File, Form
-from fastapi.middleware.cors import CORSMiddleware
-from app.utils import call_gpt_api
+# utils.py
 import os
+from openai import OpenAI
 
-app = FastAPI()
-
-# Allow frontend (network + localhost) to access API
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # allow all origins
-    allow_methods=["*"],
-    allow_headers=["*"],
+# Initialize Hugging Face client
+client = OpenAI(
+    base_url="https://router.huggingface.co/v1",
+    api_key=os.getenv("HF_TOKEN"),  # Make sure HF_TOKEN is in Render environment
 )
 
-# -------------------
-# Chat endpoint (HTTP POST)
-# -------------------
-@app.post("/chat")
-async def chat(message: str = Form(...)):
+def call_gpt_api(prompt: str) -> str:
+    """
+    Call Hugging Face AI via OpenAI-compatible API.
+    Returns AI response as string.
+    """
     try:
-        response_text = call_gpt_api(message)
-        # Return field "reply" to match frontend
-        return {"reply": response_text}
+        completion = client.chat.completions.create(
+            model="moonshotai/Kimi-K2-Instruct",
+            messages=[{"role": "user", "content": prompt}],
+        )
+        return completion.choices[0].message["content"].strip()
     except Exception as e:
-        return {"error": str(e)}
-
-# -------------------
-# File upload endpoint
-# -------------------
-@app.post("/upload")
-async def upload_file(file: UploadFile = File(...)):
-    try:
-        content = await file.read()
-        analysis = call_gpt_api(f"Analyze this file content:\n{content.decode()}")
-        return {"filename": file.filename, "analysis": analysis}
-    except Exception as e:
-        return {"error": str(e)}
-
-# -------------------
-# Run with dynamic Render port
-# -------------------
-if __name__ == "__main__":
-    import uvicorn
-    port = int(os.environ.get("PORT", 8000))
-    uvicorn.run(app, host="0.0.0.0", port=port)
+        return f"Error: {e}"
