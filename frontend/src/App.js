@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useRef } from "react";
 import ScrollToBottom from "react-scroll-to-bottom";
 import styled, { keyframes } from "styled-components";
 
@@ -9,21 +9,68 @@ const Container = styled.div`
   display: flex;
   flex-direction: column;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  color: #fff;
 `;
 
+// --- New/Updated Header ---
 const Header = styled.div`
-  padding: 15px;
-  text-align: center;
-  font-size: 18px;
-  font-weight: bold;
-  color: #fff;
+  padding: 10px 15px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   border-bottom: 1px solid #222;
 `;
 
+const UpgradeButton = styled.button`
+  background-color: #5840bb; // Purple-blue from image
+  color: white;
+  border: none;
+  border-radius: 20px;
+  padding: 8px 16px;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+  
+  &:hover {
+    background-color: #6a5acd;
+  }
+`;
+
+// Re-usable icon button for header and input
+const IconButton = styled.button`
+  background: transparent;
+  border: none;
+  color: #888;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  &:hover {
+    background-color: #222;
+  }
+`;
+
+// --- Chat Area ---
 const ChatBox = styled.div`
   flex: 1;
   display: flex;
   flex-direction: column;
+  overflow: hidden; // Prevents input bar from overlapping
+`;
+
+// --- New Empty Chat Placeholder ---
+const EmptyChatContainer = styled.div`
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 22px;
+  font-weight: bold;
+  color: #ccc;
 `;
 
 const MessagesContainer = styled(ScrollToBottom)`
@@ -42,8 +89,9 @@ const fadeIn = keyframes`
 
 const Message = styled.div`
   align-self: ${props => (props.user ? "flex-end" : "flex-start")};
-  background-color: ${props => (props.user ? "#fff" : "#1abc9c")};
-  color: ${props => (props.user ? "#000" : "#fff")};
+  /* Updated user message style for dark mode */
+  background-color: ${props => (props.user ? "#333" : "#1abc9c")};
+  color: #fff;
   padding: 12px 18px;
   border-radius: 20px;
   max-width: 75%;
@@ -60,76 +108,63 @@ const Timestamp = styled.span`
   align-self: flex-end;
 `;
 
+// --- New/Updated Input Area ---
 const InputContainer = styled.div`
   display: flex;
   align-items: center;
-  padding: 10px;
+  padding: 10px 12px;
   background-color: #000;
-  border-top: 1px solid #222;
-  gap: 8px;
+  gap: 10px;
 `;
 
 const InputWrapper = styled.div`
   flex: 1;
   display: flex;
   align-items: center;
-  background: #111;
+  background: #222; // Darker gray
   border: 1px solid #333;
   border-radius: 25px;
-  padding: 5px 10px;
+  padding: 0 10px 0 15px; // Adjust padding
 `;
 
 const TextInput = styled.input`
   flex: 1;
-  padding: 10px;
+  padding: 12px 0; // Taller input
   border: none;
   outline: none;
   font-size: 16px;
   background: transparent;
   color: #fff;
+
+  &::placeholder {
+    color: #888;
+  }
 `;
 
 const SendButton = styled.button`
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   border: none;
-  background-color: #1abc9c;
+  /* Blue color like the image's voice button */
+  background-color: #007bff; 
   color: #fff;
-  font-size: 18px;
-  cursor: pointer;
-
-  &:hover { background-color: #16a085; }
-`;
-
-const CircleButton = styled.button`
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  border: none;
-  background-color: #fff;
-  color: #000;
-  font-size: 18px;
-  cursor: pointer;
-
-  &:hover { background-color: #eee; }
-`;
-
-const FileButton = styled.label`
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background-color: #fff;
-  color: #000;
-  font-size: 18px;
+  font-size: 20px;
   cursor: pointer;
   display: flex;
-  justify-content: center;
   align-items: center;
+  justify-content: center;
 
-  input { display: none; }
-
-  &:hover { background-color: #eee; }
+  &:hover {
+    background-color: #0056b3;
+  }
+  
+  /* Style for when button is disabled */
+  &:disabled {
+    background-color: #333;
+    color: #666;
+    cursor: not-allowed;
+  }
 `;
 
 // ----- Backend URL -----
@@ -140,6 +175,7 @@ function App() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [typing, setTyping] = useState(false);
+  const fileInputRef = useRef(null); // Ref for file input
 
   const sendMessage = async () => {
     if (!input.trim()) return;
@@ -168,6 +204,7 @@ function App() {
   const handleKeyPress = (e) => { if (e.key === "Enter") sendMessage(); };
 
   const handleFileUpload = async (file) => {
+    if (!file) return;
     try {
       const form = new FormData();
       form.append("file", file);
@@ -176,38 +213,64 @@ function App() {
       setMessages(prev => [...prev, { user: false, text: `File "${data.filename}" processed: ${data.analysis}`, time: new Date().toLocaleTimeString() }]);
     } catch (err) { console.error(err); }
   };
+  
+  // Triggers hidden file input
+  const handleAttachmentClick = () => {
+    fileInputRef.current.click();
+  };
 
   return (
     <Container>
-      <Header>Xzavior AI</Header>
+      {/* New Header */}
+      <Header>
+        <IconButton onClick={() => alert("Menu clicked")}>&#9776;</IconButton>
+        <UpgradeButton onClick={() => alert("Upgrade clicked")}>Upgrade</UpgradeButton>
+        <IconButton onClick={() => alert("History clicked")}>&#8635;</IconButton>
+      </Header>
+      
       <ChatBox>
-        <MessagesContainer>
-          {messages.map((msg, i) => (
-            <Message key={i} user={msg.user}>
-              {msg.text}
-              <Timestamp>{msg.time}</Timestamp>
-            </Message>
-          ))}
-          {typing && <Message user={false}>Xzavior AI is typing...</Message>}
-        </MessagesContainer>
+        {/* Conditional "What can I help with?" message */}
+        {messages.length === 0 && !typing ? (
+          <EmptyChatContainer>
+            What can I help with?
+          </EmptyChatContainer>
+        ) : (
+          <MessagesContainer>
+            {messages.map((msg, i) => (
+              <Message key={i} user={msg.user}>
+                {msg.text}
+                <Timestamp>{msg.time}</Timestamp>
+              </Message>
+            ))}
+            {typing && <Message user={false}>Xzavior AI is typing...</Message>}
+          </MessagesContainer>
+        )}
 
+        {/* New Input Bar Layout */}
         <InputContainer>
+          <IconButton onClick={handleAttachmentClick}>+</IconButton>
+          {/* Hidden file input */}
+          <input 
+            type="file" 
+            ref={fileInputRef} 
+            style={{ display: 'none' }} 
+            onChange={(e) => handleFileUpload(e.target.files[0])} 
+          />
+          
           <InputWrapper>
             <TextInput
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyPress={handleKeyPress}
-              placeholder="Type a message..."
+              placeholder="Ask ChatGPT"
             />
-            <SendButton onClick={sendMessage}>➡️</SendButton>
+            <IconButton onClick={() => alert("Voice input soon")}>🎤</IconButton>
           </InputWrapper>
-          <CircleButton onClick={() => alert("Voice input soon")}>🎤</CircleButton>
-          <FileButton>
-            📎
-            <input type="file" onChange={(e) => handleFileUpload(e.target.files[0])} />
-          </FileButton>
-          <CircleButton onClick={() => setMessages([])}>🗑️</CircleButton>
+          
+          <SendButton onClick={sendMessage} disabled={!input.trim()}>
+            ↑
+          </SendButton>
         </InputContainer>
       </ChatBox>
     </Container>
