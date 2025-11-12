@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import ScrollToBottom from "react-scroll-to-bottom";
-import styled, { keyframes } from "styled-components";
+import styled, { keyframes, css } from "styled-components";
+import ReactMarkdown from 'react-markdown'; // <-- IMPORT THIS
 
 // --- Speech Recognition Setup ---
 const SpeechRecognition =
@@ -26,24 +27,17 @@ const Container = styled.div`
 const Header = styled.div`
   padding: 10px 15px;
   display: flex;
-  justify-content: space-between;
+  justify-content: center;
   align-items: center;
   border-bottom: 1px solid #222; 
+  position: relative;
 `;
 
-const XzaviorButton = styled.button`
-  background-color: #5840bb;
+// --- UPDATED: This is just a non-clickable title now ---
+const HeaderTitle = styled.div`
   color: white;
-  border: none;
-  border-radius: 20px;
-  padding: 8px 16px;
-  font-size: 14px;
+  font-size: 16px;
   font-weight: bold;
-  cursor: pointer;
-  
-  &:hover {
-    background-color: #6a5acd;
-  }
 `;
 
 const IconButton = styled.button`
@@ -65,7 +59,85 @@ const IconButton = styled.button`
 
 const HeaderIconButton = styled(IconButton)`
   color: #ccc;
+  position: absolute;
+  left: 15px;
 `;
+
+// --- NEW: History Panel & Overlay ---
+const HistoryOverlay = styled.div`
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.5);
+  z-index: 99;
+  opacity: ${props => (props.show ? 1 : 0)};
+  visibility: ${props => (props.show ? "visible" : "hidden")};
+  transition: opacity 0.3s ease;
+`;
+
+const HistoryPanel = styled.div`
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 260px;
+  height: 100vh;
+  background: #111;
+  border-right: 1px solid #333;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  padding: 15px;
+  transform: ${props => (props.show ? "translateX(0)" : "translateX(-100%)")};
+  transition: transform 0.3s ease-out;
+`;
+
+const NewChatButton = styled.button`
+  background: #333;
+  color: #fff;
+  border: 1px solid #555;
+  border-radius: 8px;
+  padding: 10px;
+  font-size: 14px;
+  font-weight: bold;
+  cursor: pointer;
+  text-align: left;
+  margin-bottom: 20px;
+
+  &:hover {
+    background: #444;
+  }
+`;
+
+const HistoryTitle = styled.h3`
+  font-size: 14px;
+  color: #888;
+  margin-bottom: 10px;
+`;
+
+const HistoryList = styled.div`
+  flex: 1;
+  overflow-y: auto;
+  // This is where you would map over real chat sessions
+`;
+
+const HistoryItem = styled.div`
+  padding: 8px;
+  color: #ccc;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+
+  &:hover {
+    background: #222;
+  }
+`;
+// --- End of History Panel ---
+
 
 const ChatBox = styled.div`
   flex: 1;
@@ -98,15 +170,11 @@ const fadeIn = keyframes`
   to { opacity: 1; transform: translateY(0);}
 `;
 
-// --- UPDATED: Flipped alignment and new AI color ---
+// --- UPDATED: Message component now styles Markdown ---
 const Message = styled.div`
-  /* --- THIS IS THE FIX: AI=flex-start (Left), User=flex-end (Right) --- */
   align-self: ${props => (props.user ? "flex-end" : "flex-start")};
-  
-  /* User color is grey, AI color is blue gradient */
   background: ${props => (props.user ? "#333" : "linear-gradient(135deg, #0052D4 0%, #00307A 100%)")};
   color: #fff;
-  
   padding: 14px 20px;
   border-radius: 20px;
   max-width: 75%;
@@ -117,6 +185,38 @@ const Message = styled.div`
   display: flex;
   flex-direction: column;
   gap: 6px;
+
+  /* --- NEW: Styling for markdown elements --- */
+  p {
+    margin: 0;
+  }
+  strong, b {
+    font-weight: 600;
+  }
+  ul, ol {
+    padding-left: 25px;
+    margin: 8px 0;
+  }
+  li {
+    margin-bottom: 4px;
+  }
+  pre {
+    background: #000;
+    border-radius: 8px;
+    padding: 12px;
+    font-family: 'Courier New', Courier, monospace;
+    overflow-x: auto;
+  }
+  code {
+    background: rgba(0,0,0,0.3);
+    padding: 2px 5px;
+    border-radius: 4px;
+    font-family: 'Courier New', Courier, monospace;
+  }
+  pre code {
+    background: transparent;
+    padding: 0;
+  }
 `;
 
 const Timestamp = styled.span`
@@ -184,7 +284,7 @@ const SendButton = styled.button`
 // ----- Backend URL -----
 const API_URL = "https://xzavior-ai.onrender.com";
 
-// ----- Main App (Logic Updated for VN) -----
+// ----- Main App -----
 function App() {
   const [messages, setMessages] = useState(() => {
     const savedHistory = localStorage.getItem("chatHistory");
@@ -199,6 +299,7 @@ function App() {
   const [input, setInput] = useState("");
   const [typing, setTyping] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
+  const [showHistory, setShowHistory] = useState(false); // <-- NEW: State for history panel
   const fileInputRef = useRef(null);
 
   useEffect(() => {
@@ -222,6 +323,11 @@ function App() {
 
       const response = await fetch(`${API_URL}/chat`, { method: "POST", body: form });
       const data = await response.json();
+      
+      // --- Example of AI response with Markdown ---
+      // const botText = `Here's a list:\n\n* Item 1\n* Item 2\n\nAnd some **bold** text.`;
+      // const botMsg = { user: false, text: botText, time: new Date().toLocaleTimeString() };
+      
       const botMsg = { user: false, text: data.reply, time: new Date().toLocaleTimeString() };
       setMessages(prev => [...prev, botMsg]);
     } catch (err) {
@@ -274,7 +380,6 @@ function App() {
       setInput(""); 
       recognition.start();
       setIsRecording(true);
-
       recognition.onresult = (event) => {
         const transcript = Array.from(event.results)
           .map((result) => result[0])
@@ -282,11 +387,7 @@ function App() {
           .join("");
         setInput(transcript);
       };
-
-      recognition.onend = () => {
-        setIsRecording(false);
-      };
-
+      recognition.onend = () => { setIsRecording(false); };
       recognition.onerror = (event) => {
         console.error("Speech recognition error:", event.error);
         setIsRecording(false);
@@ -298,36 +399,62 @@ function App() {
     setInput(e.target.value);
   };
 
+  // --- UPDATED: Reset function now also closes the panel ---
   const handleNewChat = () => {
     if (window.confirm("Are you sure you want to start a new chat? Your current history will be cleared.")) {
       setMessages([]);
       localStorage.removeItem("chatHistory");
+      setShowHistory(false); // Close panel after starting new chat
     }
   };
 
+  // --- NOTE ---
+  // The HistoryList is a placeholder. A real multi-chat
+  // history requires a more complex state and localStorage
+  // structure (e.g., an object of chat sessions).
+  // This code gives you the UI and the "New Chat" button.
+
   return (
     <Container>
+      {/* --- NEW: History Panel and Overlay --- */}
+      <HistoryOverlay show={showHistory} onClick={() => setShowHistory(false)} />
+      <HistoryPanel show={showHistory}>
+        <NewChatButton onClick={handleNewChat}>
+          + New Chat
+        </NewChatButton>
+        <HistoryTitle>Your Past Chats</HistoryTitle>
+        <HistoryList>
+          {/* This is where you would map your chat history */}
+          <HistoryItem>Placeholder: Chat about code</HistoryItem>
+          <HistoryItem>Placeholder: My travel plans</HistoryItem>
+        </HistoryList>
+      </HistoryPanel>
+      
       <Header>
-        <HeaderIconButton onClick={handleNewChat}>
+        {/* --- UPDATED: 3-line button now opens history --- */}
+        <HeaderIconButton onClick={() => setShowHistory(true)}>
           &#9776;
         </HeaderIconButton>
-        <XzaviorButton>Xzavior</XzaviorButton>
+        
+        <HeaderTitle>
+          Xzavior
+        </HeaderTitle>
       </Header>
       
       <ChatBox>
         {messages.length === 0 && !typing ? (
           <EmptyChatContainer>
             What can I help with?
-          </EmptyChatContainer>
+          </Data>
         ) : (
           <MessagesContainer>
             {messages.map((msg, i) => (
               <Message key={i} user={msg.user}>
-                {msg.text}
+                {/* --- UPDATED: Using ReactMarkdown to render text --- */}
+                <ReactMarkdown>{msg.text}</ReactMarkdown>
                 <Timestamp>{msg.time}</Timestamp>
               </Message>
             ))}
-            {/* --- UPDATED: AI typing bubble now also blue --- */}
             {typing && (
               <Message user={false}>
                 Xzavior AI is typing...
@@ -337,6 +464,7 @@ function App() {
         )}
 
         <InputContainer>
+          {/* ... (rest of the input controls are unchanged) ... */}
           <IconButton onClick={handleAttachmentClick}>+</IconButton>
           <input 
             type="file" 
@@ -344,7 +472,6 @@ function App() {
             style={{ display: 'none' }} 
             onChange={handleFileUpload}
           />
-          
           <InputWrapper>
             <TextInput
               type="text"
@@ -360,7 +487,6 @@ function App() {
               🎤
             </IconButton>
           </InputWrapper>
-          
           <SendButton onClick={sendMessage} disabled={!input.trim()}>
             ↑
           </SendButton>
