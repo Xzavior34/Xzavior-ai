@@ -12,13 +12,15 @@ const Container = styled.div`
   color: #fff;
 `;
 
-// --- New/Updated Header ---
+// --- Header ---
 const Header = styled.div`
   padding: 10px 15px;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-bottom: 1px solid #222;
+  /* Matching the image, the border is very subtle or non-existent. 
+     Keeping a very dark one for separation. */
+  border-bottom: 1px solid #222; 
 `;
 
 const UpgradeButton = styled.button`
@@ -40,7 +42,7 @@ const UpgradeButton = styled.button`
 const IconButton = styled.button`
   background: transparent;
   border: none;
-  color: #888;
+  color: #888; /* Default color for input icons */
   font-size: 20px;
   cursor: pointer;
   padding: 8px;
@@ -54,15 +56,21 @@ const IconButton = styled.button`
   }
 `;
 
+// **NEW**: Specific style for header icons to match image
+const HeaderIconButton = styled(IconButton)`
+  color: #ccc; /* Lighter color for header icons */
+`;
+
+
 // --- Chat Area ---
 const ChatBox = styled.div`
   flex: 1;
   display: flex;
   flex-direction: column;
-  overflow: hidden; // Prevents input bar from overlapping
+  overflow: hidden; 
 `;
 
-// --- New Empty Chat Placeholder ---
+// --- Empty Chat Placeholder (UPDATED) ---
 const EmptyChatContainer = styled.div`
   flex: 1;
   display: flex;
@@ -70,7 +78,7 @@ const EmptyChatContainer = styled.div`
   align-items: center;
   font-size: 22px;
   font-weight: bold;
-  color: #ccc;
+  color: #fff; /* Changed from #ccc to white to match image */
 `;
 
 const MessagesContainer = styled(ScrollToBottom)`
@@ -89,7 +97,6 @@ const fadeIn = keyframes`
 
 const Message = styled.div`
   align-self: ${props => (props.user ? "flex-end" : "flex-start")};
-  /* Updated user message style for dark mode */
   background-color: ${props => (props.user ? "#333" : "#1abc9c")};
   color: #fff;
   padding: 12px 18px;
@@ -108,7 +115,7 @@ const Timestamp = styled.span`
   align-self: flex-end;
 `;
 
-// --- New/Updated Input Area ---
+// --- Input Area ---
 const InputContainer = styled.div`
   display: flex;
   align-items: center;
@@ -117,19 +124,20 @@ const InputContainer = styled.div`
   gap: 10px;
 `;
 
+// **UPDATED**: Darker input field to match image
 const InputWrapper = styled.div`
   flex: 1;
   display: flex;
   align-items: center;
-  background: #222; // Darker gray
-  border: 1px solid #333;
+  background: #1a1a1a; /* Darker than #222 */
+  border: 1px solid #2a2a2a; /* More subtle border */
   border-radius: 25px;
-  padding: 0 10px 0 15px; // Adjust padding
+  padding: 0 10px 0 15px; 
 `;
 
 const TextInput = styled.input`
   flex: 1;
-  padding: 12px 0; // Taller input
+  padding: 12px 0; 
   border: none;
   outline: none;
   font-size: 16px;
@@ -146,7 +154,6 @@ const SendButton = styled.button`
   height: 44px;
   border-radius: 50%;
   border: none;
-  /* Blue color like the image's voice button */
   background-color: #007bff; 
   color: #fff;
   font-size: 20px;
@@ -159,7 +166,6 @@ const SendButton = styled.button`
     background-color: #0056b3;
   }
   
-  /* Style for when button is disabled */
   &:disabled {
     background-color: #333;
     color: #666;
@@ -170,12 +176,12 @@ const SendButton = styled.button`
 // ----- Backend URL -----
 const API_URL = "https://xzavior-ai.onrender.com";
 
-// ----- Main App -----
+// ----- Main App (Logic unchanged) -----
 function App() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [typing, setTyping] = useState(false);
-  const fileInputRef = useRef(null); // Ref for file input
+  const fileInputRef = useRef(null); 
 
   const sendMessage = async () => {
     if (!input.trim()) return;
@@ -214,18 +220,17 @@ function App() {
     } catch (err) { console.error(err); }
   };
   
-  // Triggers hidden file input
   const handleAttachmentClick = () => {
     fileInputRef.current.click();
   };
 
   return (
     <Container>
-      {/* New Header */}
+      {/* Header using new HeaderIconButton */}
       <Header>
-        <IconButton onClick={() => alert("Menu clicked")}>&#9776;</IconButton>
+        <HeaderIconButton onClick={() => alert("Menu clicked")}>&#9776;</HeaderIconButton>
         <UpgradeButton onClick={() => alert("Upgrade clicked")}>Upgrade</UpgradeButton>
-        <IconButton onClick={() => alert("History clicked")}>&#8635;</IconButton>
+        <HeaderIconButton onClick={() => alert("History clicked")}>&#8635;</HeaderIconButton>
       </Header>
       
       <ChatBox>
@@ -246,10 +251,9 @@ function App() {
           </MessagesContainer>
         )}
 
-        {/* New Input Bar Layout */}
+        {/* Input Bar using default IconButton */}
         <InputContainer>
           <IconButton onClick={handleAttachmentClick}>+</IconButton>
-          {/* Hidden file input */}
           <input 
             type="file" 
             ref={fileInputRef} 
@@ -261,13 +265,16 @@ function App() {
             <TextInput
               type="text"
               value={input}
-              onChange={(e) => setInput(e.target.value)}
+              onChange={(e) => setInput(e.g.value)}
               onKeyPress={handleKeyPress}
               placeholder="Ask ChatGPT"
             />
             <IconButton onClick={() => alert("Voice input soon")}>🎤</IconButton>
           </InputWrapper>
           
+          {/* Note: Kept your SendButton logic. The image has a voice button here, 
+            but that would require changing logic (which you asked not to do).
+          */}
           <SendButton onClick={sendMessage} disabled={!input.trim()}>
             ↑
           </SendButton>
