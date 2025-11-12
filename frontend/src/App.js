@@ -3,15 +3,14 @@ import ScrollToBottom from "react-scroll-to-bottom";
 import styled, { keyframes } from "styled-components";
 
 // --- Speech Recognition Setup ---
-// This checks if the browser supports the Web Speech API
 const SpeechRecognition =
   window.SpeechRecognition || window.webkitSpeechRecognition;
 const recognition = SpeechRecognition ? new SpeechRecognition() : null;
 
 if (recognition) {
-  recognition.continuous = false; // Stop when user pauses
+  recognition.continuous = false; 
   recognition.lang = "en-US";
-  recognition.interimResults = true; // Show results as they come
+  recognition.interimResults = true;
 }
 
 // ----- Styled Components -----
@@ -32,7 +31,6 @@ const Header = styled.div`
   border-bottom: 1px solid #222; 
 `;
 
-// --- UPDATED: Renamed button ---
 const XzaviorButton = styled.button`
   background-color: #5840bb;
   color: white;
@@ -51,7 +49,7 @@ const XzaviorButton = styled.button`
 const IconButton = styled.button`
   background: transparent;
   border: none;
-  color: ${props => (props.isRecording ? '#ff4136' : '#888')}; // Red when recording
+  color: ${props => (props.isRecording ? '#ff4136' : '#888')};
   font-size: 20px;
   cursor: pointer;
   padding: 8px;
@@ -100,13 +98,15 @@ const fadeIn = keyframes`
   to { opacity: 1; transform: translateY(0);}
 `;
 
-// --- NO CHANGE NEEDED: This logic is already correct ---
-// User (true) aligns left (flex-start)
-// AI (false) aligns right (flex-end)
+// --- UPDATED: Flipped alignment and new AI color ---
 const Message = styled.div`
-  align-self: ${props => (props.user ? "flex-start" : "flex-end")};
-  background-color: ${props => (props.user ? "#333" : "#1abc9c")};
+  /* --- THIS IS THE FIX: AI=flex-start (Left), User=flex-end (Right) --- */
+  align-self: ${props => (props.user ? "flex-end" : "flex-start")};
+  
+  /* User color is grey, AI color is blue gradient */
+  background: ${props => (props.user ? "#333" : "linear-gradient(135deg, #0052D4 0%, #00307A 100%)")};
   color: #fff;
+  
   padding: 14px 20px;
   border-radius: 20px;
   max-width: 75%;
@@ -186,7 +186,6 @@ const API_URL = "https://xzavior-ai.onrender.com";
 
 // ----- Main App (Logic Updated for VN) -----
 function App() {
-  // --- UPDATED: Load messages from localStorage on startup ---
   const [messages, setMessages] = useState(() => {
     const savedHistory = localStorage.getItem("chatHistory");
     try {
@@ -202,9 +201,7 @@ function App() {
   const [isRecording, setIsRecording] = useState(false);
   const fileInputRef = useRef(null);
 
-  // --- NEW: Save messages to localStorage whenever they change ---
   useEffect(() => {
-    // Don't save empty array if it's just initializing
     if (messages.length > 0) {
       localStorage.setItem("chatHistory", JSON.stringify(messages));
     }
@@ -301,7 +298,6 @@ function App() {
     setInput(e.target.value);
   };
 
-  // --- NEW: Function for the menu button to clear chat history ---
   const handleNewChat = () => {
     if (window.confirm("Are you sure you want to start a new chat? Your current history will be cleared.")) {
       setMessages([]);
@@ -312,11 +308,9 @@ function App() {
   return (
     <Container>
       <Header>
-        {/* --- UPDATED: onClick handler --- */}
         <HeaderIconButton onClick={handleNewChat}>
           &#9776;
         </HeaderIconButton>
-        {/* --- UPDATED: Button text --- */}
         <XzaviorButton>Xzavior</XzaviorButton>
       </Header>
       
@@ -333,7 +327,12 @@ function App() {
                 <Timestamp>{msg.time}</Timestamp>
               </Message>
             ))}
-            {typing && <Message user={false}>Xzavior AI is typing...</Message>}
+            {/* --- UPDATED: AI typing bubble now also blue --- */}
+            {typing && (
+              <Message user={false}>
+                Xzavior AI is typing...
+              </Message>
+            )}
           </MessagesContainer>
         )}
 
@@ -352,7 +351,7 @@ function App() {
               value={input}
               onChange={handleInputChange}
               onKeyPress={handleKeyPress}
-              placeholder="Ask Xzavior AI" // Also updated placeholder
+              placeholder="Ask Xzavior AI"
             />
             <IconButton 
               onClick={handleVoiceRecording}
