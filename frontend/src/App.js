@@ -1,6 +1,18 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import ScrollToBottom from "react-scroll-to-bottom";
 import styled, { keyframes } from "styled-components";
+
+// --- Speech Recognition Setup ---
+// This checks if the browser supports the Web Speech API
+const SpeechRecognition =
+  window.SpeechRecognition || window.webkitSpeechRecognition;
+const recognition = SpeechRecognition ? new SpeechRecognition() : null;
+
+if (recognition) {
+  recognition.continuous = false; // Stop when user pauses
+  recognition.lang = "en-US";
+  recognition.interimResults = true; // Show results as they come
+}
 
 // ----- Styled Components -----
 const Container = styled.div`
@@ -35,11 +47,10 @@ const UpgradeButton = styled.button`
   }
 `;
 
-// IconButton updated for recording state
 const IconButton = styled.button`
   background: transparent;
   border: none;
-  color: ${props => (props.isRecording ? '#ff4136' : '#888')};
+  color: ${props => (props.isRecording ? '#ff4136' : '#888')}; // Red when recording
   font-size: 20px;
   cursor: pointer;
   padding: 8px;
@@ -74,12 +85,13 @@ const EmptyChatContainer = styled.div`
   color: #fff;
 `;
 
+// --- UPDATED: More spacious message container ---
 const MessagesContainer = styled(ScrollToBottom)`
   flex: 1;
   padding: 15px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 15px; /* Increased gap */
   overflow-y: auto;
 `;
 
@@ -88,14 +100,25 @@ const fadeIn = keyframes`
   to { opacity: 1; transform: translateY(0);}
 `;
 
+// --- UPDATED: Message layout and styling ---
 const Message = styled.div`
-  align-self: ${props => (props.user ? "flex-end" : "flex-start")};
+  /* --- THIS IS THE FIX: User=flex-start (Left), AI=flex-end (Right) --- */
+  align-self: ${props => (props.user ? "flex-start" : "flex-end")};
+  
+  /* User color is grey, AI color is green */
   background-color: ${props => (props.user ? "#333" : "#1abc9c")};
   color: #fff;
-  padding: 12px 18px;
+  
+  /* --- Increased padding for "spacious" feel --- */
+  padding: 14px 20px;
   border-radius: 20px;
   max-width: 75%;
   font-size: 15px;
+  
+  /* --- Increased line height for readability --- */
+  line-height: 1.5;
+  word-wrap: break-word; /* Fixes long words */
+  
   animation: ${fadeIn} 0.3s ease-out;
   display: flex;
   flex-direction: column;
@@ -105,7 +128,8 @@ const Message = styled.div`
 const Timestamp = styled.span`
   font-size: 10px;
   color: #ccc;
-  align-self: flex-end;
+  /* Align timestamp to the end of the bubble */
+  align-self: flex-end; 
 `;
 
 const InputContainer = styled.div`
@@ -167,7 +191,7 @@ const SendButton = styled.button`
 // ----- Backend URL -----
 const API_URL = "https://xzavior-ai.onrender.com";
 
-// ----- Main App (All Logic Updated) -----
+// ----- Main App (Logic Updated for VN) -----
 function App() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
@@ -175,10 +199,9 @@ function App() {
   const [isRecording, setIsRecording] = useState(false); // State for voice note
   
   const fileInputRef = useRef(null); 
-  const mediaRecorderRef = useRef(null); // Ref to hold MediaRecorder instance
-  const audioChunksRef = useRef([]); // Ref to hold recorded audio chunks
+  // --- REMOVED: MediaRecorder refs, we are using SpeechRecognition now ---
 
-  // --- Text Message Sending ---
+  // --- Text Message Sending (Unchanged) ---
   const sendMessage = async () => {
     if (!input.trim()) return;
 
@@ -205,7 +228,7 @@ function App() {
 
   const handleKeyPress = (e) => { if (e.key === "Enter") sendMessage(); };
 
-  // --- File Upload Logic (Triggered by '+') ---
+  // --- File Upload Logic (Unchanged) ---
   const handleAttachmentClick = () => {
     fileInputRef.current.click();
   };
@@ -214,7 +237,6 @@ function App() {
     const file = e.target.files[0];
     if (!file) return;
 
-    // **FIX:** Add user message for instant feedback
     const userMsg = { user: true, text: `File: ${file.name}`, time: new Date().toLocaleTimeString() };
     setMessages(prev => [...prev, userMsg]);
     setTyping(true);
@@ -224,7 +246,6 @@ function App() {
       form.append("file", file);
       const res = await fetch(`${API_URL}/upload`, { method: "POST", body: form });
       const data = await res.json();
-      // Add bot's analysis response
       setMessages(prev => [...prev, { user: false, text: `File "${data.filename}" processed: ${data.analysis}`, time: new Date().toLocaleTimeString() }]);
     } catch (err) {
       console.error("File upload error:", err);
@@ -232,76 +253,53 @@ function App() {
     } finally {
       setTyping(false);
     }
-    // Reset file input to allow re-uploading the same file
     e.target.value = null;
   };
   
-  // --- Voice Note (VN) Logic ---
-
-  // Function to send the final audio file to a new endpoint
-  const sendAudioFile = async (audioFile) => {
-    setTyping(true);
-    try {
-      const formData = new FormData();
-      formData.append("file", audioFile, "voice-note.webm"); // Sending as .webm
-
-      const res = await fetch(`${API_URL}/voice`, { // **NOTE: New Endpoint**
-        method: "POST",
-        body: formData,
-      });
-      const data = await res.json();
-      const botMsg = { user: false, text: data.reply, time: new Date().toLocaleTimeString() };
-      setMessages(prev => [...prev, botMsg]);
-
-    } catch (err) {
-      console.error("Voice API error:", err);
-      setMessages(prev => [...prev, { user: false, text: "Failed to process voice note.", time: new Date().toLocaleTimeString() }]);
-    } finally {
-      setTyping(false);
+  // --- NEW: Voice-to-Text Logic ---
+  const handleVoiceRecording = () => {
+    if (!recognition) {
+      alert("Speech recognition is not supported in your browser.");
+      return;
     }
-  };
 
-  const handleStartRecording = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      mediaRecorderRef.current = new MediaRecorder(stream, { mimeType: "audio/webm" });
-      audioChunksRef.current = []; // Clear previous chunks
+    if (isRecording) {
+      // If already recording, stop it
+      recognition.stop();
+      setIsRecording(false);
+    } else {
+      // If not recording, start it
+      
+      // Clear old input
+      setInput(""); 
 
-      mediaRecorderRef.current.ondataavailable = (event) => {
-        audioChunksRef.current.push(event.data);
-      };
-
-      mediaRecorderRef.current.onstop = () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
-        const audioFile = new File([audioBlob], "voice-note.webm", { type: "audio/webm" });
-        
-        // Add a "user" message to show the VN was sent
-        setMessages(prev => [...prev, { user: true, text: "Voice note sent.", time: new Date().toLocaleTimeString() }]);
-        
-        // Send the file to backend
-        sendAudioFile(audioFile);
-
-        // Stop all audio tracks to turn off mic indicator
-        stream.getTracks().forEach(track => track.stop());
-      };
-
-      mediaRecorderRef.current.start();
+      recognition.start();
       setIsRecording(true);
 
-    } catch (err) {
-      console.error("Microphone access denied:", err);
-      alert("Microphone access is required to record voice notes.");
+      // Event: As user speaks, update the input field
+      recognition.onresult = (event) => {
+        const transcript = Array.from(event.results)
+          .map((result) => result[0])
+          .map((result) => result.transcript)
+          .join("");
+        setInput(transcript); // Update input field in real-time
+      };
+
+      // Event: When user stops talking
+      recognition.onend = () => {
+        setIsRecording(false);
+      };
+
+      // Event: Handle errors
+      recognition.onerror = (event) => {
+        console.error("Speech recognition error:", event.error);
+        setIsRecording(false);
+      };
     }
   };
 
-  const handleStopRecording = () => {
-    mediaRecorderRef.current.stop();
-    setIsRecording(false);
-  };
-
-  // --- FIX: This is the typing handler ---
+  // --- Input Typing Handler (Unchanged) ---
   const handleInputChange = (e) => {
-    console.log("typing...", e.target.value); // For debugging
     setInput(e.target.value);
   };
 
@@ -337,20 +335,20 @@ function App() {
             type="file" 
             ref={fileInputRef} 
             style={{ display: 'none' }} 
-            onChange={handleFileUpload} // Use the new handler
+            onChange={handleFileUpload}
           />
           
           <InputWrapper>
             <TextInput
               type="text"
               value={input}
-              // --- THIS IS THE FIX ---
               onChange={handleInputChange}
               onKeyPress={handleKeyPress}
               placeholder="Ask ChatGPT"
             />
+            {/* --- UPDATED: Mic button now toggles Voice-to-Text --- */}
             <IconButton 
-              onClick={isRecording ? handleStopRecording : handleStartRecording}
+              onClick={handleVoiceRecording}
               isRecording={isRecording}
             >
               🎤
