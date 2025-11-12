@@ -12,7 +12,6 @@ const Container = styled.div`
   color: #fff;
 `;
 
-// --- Header ---
 const Header = styled.div`
   padding: 10px 15px;
   display: flex;
@@ -36,11 +35,10 @@ const UpgradeButton = styled.button`
   }
 `;
 
-// --- UPDATED: IconButton now accepts 'isRecording' prop ---
+// IconButton updated for recording state
 const IconButton = styled.button`
   background: transparent;
   border: none;
-  /* Change color to red if 'isRecording' prop is true */
   color: ${props => (props.isRecording ? '#ff4136' : '#888')};
   font-size: 20px;
   cursor: pointer;
@@ -56,11 +54,9 @@ const IconButton = styled.button`
 `;
 
 const HeaderIconButton = styled(IconButton)`
-  color: #ccc; /* Lighter color for header icons */
+  color: #ccc;
 `;
 
-
-// --- Chat Area ---
 const ChatBox = styled.div`
   flex: 1;
   display: flex;
@@ -112,7 +108,6 @@ const Timestamp = styled.span`
   align-self: flex-end;
 `;
 
-// --- Input Area ---
 const InputContainer = styled.div`
   display: flex;
   align-items: center;
@@ -172,14 +167,18 @@ const SendButton = styled.button`
 // ----- Backend URL -----
 const API_URL = "https://xzavior-ai.onrender.com";
 
-// ----- Main App (Logic UPDATED) -----
+// ----- Main App (All Logic Updated) -----
 function App() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [typing, setTyping] = useState(false);
-  const [isRecording, setIsRecording] = useState(false); // --- NEW: State for voice note
+  const [isRecording, setIsRecording] = useState(false); // State for voice note
+  
   const fileInputRef = useRef(null); 
+  const mediaRecorderRef = useRef(null); // Ref to hold MediaRecorder instance
+  const audioChunksRef = useRef([]); // Ref to hold recorded audio chunks
 
+  // --- Text Message Sending ---
   const sendMessage = async () => {
     if (!input.trim()) return;
 
@@ -196,55 +195,123 @@ function App() {
       const data = await response.json();
       const botMsg = { user: false, text: data.reply, time: new Date().toLocaleTimeString() };
       setMessages(prev => [...prev, botMsg]);
-      setTyping(false);
     } catch (err) {
-      console.error(err);
+      console.error("Chat API error:", err);
       setMessages(prev => [...prev, { user: false, text: "Failed to get response.", time: new Date().toLocaleTimeString() }]);
+    } finally {
       setTyping(false);
     }
   };
 
   const handleKeyPress = (e) => { if (e.key === "Enter") sendMessage(); };
 
-  const handleFileUpload = async (file) => {
+  // --- File Upload Logic (Triggered by '+') ---
+  const handleAttachmentClick = () => {
+    fileInputRef.current.click();
+  };
+
+  const handleFileUpload = async (e) => {
+    const file = e.target.files[0];
     if (!file) return;
+
+    // **FIX:** Add user message for instant feedback
+    const userMsg = { user: true, text: `File: ${file.name}`, time: new Date().toLocaleTimeString() };
+    setMessages(prev => [...prev, userMsg]);
+    setTyping(true);
+
     try {
       const form = new FormData();
       form.append("file", file);
       const res = await fetch(`${API_URL}/upload`, { method: "POST", body: form });
       const data = await res.json();
+      // Add bot's analysis response
       setMessages(prev => [...prev, { user: false, text: `File "${data.filename}" processed: ${data.analysis}`, time: new Date().toLocaleTimeString() }]);
-    } catch (err) { console.error(err); }
+    } catch (err) {
+      console.error("File upload error:", err);
+      setMessages(prev => [...prev, { user: false, text: "Failed to process file.", time: new Date().toLocaleTimeString() }]);
+    } finally {
+      setTyping(false);
+    }
+    // Reset file input to allow re-uploading the same file
+    e.target.value = null;
   };
   
-  const handleAttachmentClick = () => {
-    fileInputRef.current.click();
+  // --- Voice Note (VN) Logic ---
+
+  // Function to send the final audio file to a new endpoint
+  const sendAudioFile = async (audioFile) => {
+    setTyping(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", audioFile, "voice-note.webm"); // Sending as .webm
+
+      const res = await fetch(`${API_URL}/voice`, { // **NOTE: New Endpoint**
+        method: "POST",
+        body: formData,
+      });
+      const data = await res.json();
+      const botMsg = { user: false, text: data.reply, time: new Date().toLocaleTimeString() };
+      setMessages(prev => [...prev, botMsg]);
+
+    } catch (err) {
+      console.error("Voice API error:", err);
+      setMessages(prev => [...prev, { user: false, text: "Failed to process voice note.", time: new Date().toLocaleTimeString() }]);
+    } finally {
+      setTyping(false);
+    }
   };
 
-  // --- NEW: Voice Note Handlers ---
-  const handleStartRecording = () => {
-    setIsRecording(true);
-    alert("Recording started... (Click mic again to stop)");
-    // In a real app, you'd start the MediaRecorder API here
+  const handleStartRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaRecorderRef.current = new MediaRecorder(stream, { mimeType: "audio/webm" });
+      audioChunksRef.current = []; // Clear previous chunks
+
+      mediaRecorderRef.current.ondataavailable = (event) => {
+        audioChunksRef.current.push(event.data);
+      };
+
+      mediaRecorderRef.current.onstop = () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
+        const audioFile = new File([audioBlob], "voice-note.webm", { type: "audio/webm" });
+        
+        // Add a "user" message to show the VN was sent
+        setMessages(prev => [...prev, { user: true, text: "Voice note sent.", time: new Date().toLocaleTimeString() }]);
+        
+        // Send the file to backend
+        sendAudioFile(audioFile);
+
+        // Stop all audio tracks to turn off mic indicator
+        stream.getTracks().forEach(track => track.stop());
+      };
+
+      mediaRecorderRef.current.start();
+      setIsRecording(true);
+
+    } catch (err) {
+      console.error("Microphone access denied:", err);
+      alert("Microphone access is required to record voice notes.");
+    }
   };
 
   const handleStopRecording = () => {
+    mediaRecorderRef.current.stop();
     setIsRecording(false);
-    alert("Recording stopped... (Processing voice note...)");
-    // In a real app, you'd stop the recorder, get the audio blob,
-    // and send it to your API.
   };
-  // --- END: Voice Note Handlers ---
+
+  // --- FIX: This is the typing handler ---
+  const handleInputChange = (e) => {
+    console.log("typing...", e.target.value); // For debugging
+    setInput(e.target.value);
+  };
 
   return (
     <Container>
-      {/* --- UPDATED: Header now only has Menu and Upgrade --- */}
       <Header>
         <HeaderIconButton onClick={() => alert("Menu & History clicked")}>
           &#9776;
         </HeaderIconButton>
         <UpgradeButton onClick={() => alert("Upgrade clicked")}>Upgrade</UpgradeButton>
-        {/* --- REMOVED: History icon removed --- */}
       </Header>
       
       <ChatBox>
@@ -270,19 +337,18 @@ function App() {
             type="file" 
             ref={fileInputRef} 
             style={{ display: 'none' }} 
-            onChange={(e) => handleFileUpload(e.target.files[0])} 
+            onChange={handleFileUpload} // Use the new handler
           />
           
           <InputWrapper>
             <TextInput
               type="text"
               value={input}
-              // --- FIX: Corrected 'e.g.value' to 'e.target.value' ---
-              onChange={(e) => setInput(e.target.value)}
+              // --- THIS IS THE FIX ---
+              onChange={handleInputChange}
               onKeyPress={handleKeyPress}
               placeholder="Ask ChatGPT"
             />
-            {/* --- UPDATED: Mic button now uses new state and handlers --- */}
             <IconButton 
               onClick={isRecording ? handleStopRecording : handleStartRecording}
               isRecording={isRecording}
