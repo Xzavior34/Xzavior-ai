@@ -445,7 +445,7 @@ function App() {
         {messages.length === 0 && !typing ? (
           <EmptyChatContainer>
             What can I help with?
-          </Data>
+          </EmptyChatContainer> // <-- THIS WAS THE FIX
         ) : (
           <MessagesContainer>
             {messages.map((msg, i) => (
