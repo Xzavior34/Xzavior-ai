@@ -10,11 +10,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. Checkout the main branch
+      # 1. Checkout main branch
       - name: Checkout main branch
         uses: actions/checkout@v3
-        with:
-          persist-credentials: false
 
       # 2. Setup Node.js
       - name: Setup Node.js
@@ -35,4 +33,7 @@ jobs:
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./build    # change to ./dist if your build folder is named dist
+          publish_dir: ./build       # change to ./dist if your build folder is named dist
+          force_orphan: true         # <-- force a clean deployment
+          user_name: "github-actions"
+          user_email: "github-actions@github.com"
