@@ -32,7 +32,8 @@ const Header = styled.div`
   border-bottom: 1px solid #222; 
 `;
 
-const UpgradeButton = styled.button`
+// --- UPDATED: Renamed button ---
+const XzaviorButton = styled.button`
   background-color: #5840bb;
   color: white;
   border: none;
@@ -85,13 +86,12 @@ const EmptyChatContainer = styled.div`
   color: #fff;
 `;
 
-// --- UPDATED: More spacious message container ---
 const MessagesContainer = styled(ScrollToBottom)`
   flex: 1;
   padding: 15px;
   display: flex;
   flex-direction: column;
-  gap: 15px; /* Increased gap */
+  gap: 15px;
   overflow-y: auto;
 `;
 
@@ -100,25 +100,19 @@ const fadeIn = keyframes`
   to { opacity: 1; transform: translateY(0);}
 `;
 
-// --- UPDATED: Message layout and styling ---
+// --- NO CHANGE NEEDED: This logic is already correct ---
+// User (true) aligns left (flex-start)
+// AI (false) aligns right (flex-end)
 const Message = styled.div`
-  /* --- THIS IS THE FIX: User=flex-start (Left), AI=flex-end (Right) --- */
   align-self: ${props => (props.user ? "flex-start" : "flex-end")};
-  
-  /* User color is grey, AI color is green */
   background-color: ${props => (props.user ? "#333" : "#1abc9c")};
   color: #fff;
-  
-  /* --- Increased padding for "spacious" feel --- */
   padding: 14px 20px;
   border-radius: 20px;
   max-width: 75%;
   font-size: 15px;
-  
-  /* --- Increased line height for readability --- */
   line-height: 1.5;
-  word-wrap: break-word; /* Fixes long words */
-  
+  word-wrap: break-word;
   animation: ${fadeIn} 0.3s ease-out;
   display: flex;
   flex-direction: column;
@@ -128,7 +122,6 @@ const Message = styled.div`
 const Timestamp = styled.span`
   font-size: 10px;
   color: #ccc;
-  /* Align timestamp to the end of the bubble */
   align-self: flex-end; 
 `;
 
@@ -193,15 +186,31 @@ const API_URL = "https://xzavior-ai.onrender.com";
 
 // ----- Main App (Logic Updated for VN) -----
 function App() {
-  const [messages, setMessages] = useState([]);
+  // --- UPDATED: Load messages from localStorage on startup ---
+  const [messages, setMessages] = useState(() => {
+    const savedHistory = localStorage.getItem("chatHistory");
+    try {
+      return savedHistory ? JSON.parse(savedHistory) : [];
+    } catch (e) {
+      console.error("Failed to parse chat history:", e);
+      return [];
+    }
+  });
+
   const [input, setInput] = useState("");
   const [typing, setTyping] = useState(false);
-  const [isRecording, setIsRecording] = useState(false); // State for voice note
-  
-  const fileInputRef = useRef(null); 
-  // --- REMOVED: MediaRecorder refs, we are using SpeechRecognition now ---
+  const [isRecording, setIsRecording] = useState(false);
+  const fileInputRef = useRef(null);
 
-  // --- Text Message Sending (Unchanged) ---
+  // --- NEW: Save messages to localStorage whenever they change ---
+  useEffect(() => {
+    // Don't save empty array if it's just initializing
+    if (messages.length > 0) {
+      localStorage.setItem("chatHistory", JSON.stringify(messages));
+    }
+  }, [messages]);
+
+
   const sendMessage = async () => {
     if (!input.trim()) return;
 
@@ -228,7 +237,6 @@ function App() {
 
   const handleKeyPress = (e) => { if (e.key === "Enter") sendMessage(); };
 
-  // --- File Upload Logic (Unchanged) ---
   const handleAttachmentClick = () => {
     fileInputRef.current.click();
   };
@@ -256,7 +264,6 @@ function App() {
     e.target.value = null;
   };
   
-  // --- NEW: Voice-to-Text Logic ---
   const handleVoiceRecording = () => {
     if (!recognition) {
       alert("Speech recognition is not supported in your browser.");
@@ -264,33 +271,25 @@ function App() {
     }
 
     if (isRecording) {
-      // If already recording, stop it
       recognition.stop();
       setIsRecording(false);
     } else {
-      // If not recording, start it
-      
-      // Clear old input
       setInput(""); 
-
       recognition.start();
       setIsRecording(true);
 
-      // Event: As user speaks, update the input field
       recognition.onresult = (event) => {
         const transcript = Array.from(event.results)
           .map((result) => result[0])
           .map((result) => result.transcript)
           .join("");
-        setInput(transcript); // Update input field in real-time
+        setInput(transcript);
       };
 
-      // Event: When user stops talking
       recognition.onend = () => {
         setIsRecording(false);
       };
 
-      // Event: Handle errors
       recognition.onerror = (event) => {
         console.error("Speech recognition error:", event.error);
         setIsRecording(false);
@@ -298,18 +297,27 @@ function App() {
     }
   };
 
-  // --- Input Typing Handler (Unchanged) ---
   const handleInputChange = (e) => {
     setInput(e.target.value);
+  };
+
+  // --- NEW: Function for the menu button to clear chat history ---
+  const handleNewChat = () => {
+    if (window.confirm("Are you sure you want to start a new chat? Your current history will be cleared.")) {
+      setMessages([]);
+      localStorage.removeItem("chatHistory");
+    }
   };
 
   return (
     <Container>
       <Header>
-        <HeaderIconButton onClick={() => alert("Menu & History clicked")}>
+        {/* --- UPDATED: onClick handler --- */}
+        <HeaderIconButton onClick={handleNewChat}>
           &#9776;
         </HeaderIconButton>
-        <UpgradeButton onClick={() => alert("Upgrade clicked")}>Upgrade</UpgradeButton>
+        {/* --- UPDATED: Button text --- */}
+        <XzaviorButton>Xzavior</XzaviorButton>
       </Header>
       
       <ChatBox>
@@ -344,9 +352,8 @@ function App() {
               value={input}
               onChange={handleInputChange}
               onKeyPress={handleKeyPress}
-              placeholder="Ask ChatGPT"
+              placeholder="Ask Xzavior AI" // Also updated placeholder
             />
-            {/* --- UPDATED: Mic button now toggles Voice-to-Text --- */}
             <IconButton 
               onClick={handleVoiceRecording}
               isRecording={isRecording}
