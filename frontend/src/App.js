@@ -18,13 +18,11 @@ const Header = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  /* Matching the image, the border is very subtle or non-existent. 
-     Keeping a very dark one for separation. */
   border-bottom: 1px solid #222; 
 `;
 
 const UpgradeButton = styled.button`
-  background-color: #5840bb; // Purple-blue from image
+  background-color: #5840bb;
   color: white;
   border: none;
   border-radius: 20px;
@@ -38,11 +36,12 @@ const UpgradeButton = styled.button`
   }
 `;
 
-// Re-usable icon button for header and input
+// --- UPDATED: IconButton now accepts 'isRecording' prop ---
 const IconButton = styled.button`
   background: transparent;
   border: none;
-  color: #888; /* Default color for input icons */
+  /* Change color to red if 'isRecording' prop is true */
+  color: ${props => (props.isRecording ? '#ff4136' : '#888')};
   font-size: 20px;
   cursor: pointer;
   padding: 8px;
@@ -56,7 +55,6 @@ const IconButton = styled.button`
   }
 `;
 
-// **NEW**: Specific style for header icons to match image
 const HeaderIconButton = styled(IconButton)`
   color: #ccc; /* Lighter color for header icons */
 `;
@@ -70,7 +68,6 @@ const ChatBox = styled.div`
   overflow: hidden; 
 `;
 
-// --- Empty Chat Placeholder (UPDATED) ---
 const EmptyChatContainer = styled.div`
   flex: 1;
   display: flex;
@@ -78,7 +75,7 @@ const EmptyChatContainer = styled.div`
   align-items: center;
   font-size: 22px;
   font-weight: bold;
-  color: #fff; /* Changed from #ccc to white to match image */
+  color: #fff;
 `;
 
 const MessagesContainer = styled(ScrollToBottom)`
@@ -124,13 +121,12 @@ const InputContainer = styled.div`
   gap: 10px;
 `;
 
-// **UPDATED**: Darker input field to match image
 const InputWrapper = styled.div`
   flex: 1;
   display: flex;
   align-items: center;
-  background: #1a1a1a; /* Darker than #222 */
-  border: 1px solid #2a2a2a; /* More subtle border */
+  background: #1a1a1a; 
+  border: 1px solid #2a2a2a; 
   border-radius: 25px;
   padding: 0 10px 0 15px; 
 `;
@@ -176,11 +172,12 @@ const SendButton = styled.button`
 // ----- Backend URL -----
 const API_URL = "https://xzavior-ai.onrender.com";
 
-// ----- Main App (Logic unchanged) -----
+// ----- Main App (Logic UPDATED) -----
 function App() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [typing, setTyping] = useState(false);
+  const [isRecording, setIsRecording] = useState(false); // --- NEW: State for voice note
   const fileInputRef = useRef(null); 
 
   const sendMessage = async () => {
@@ -224,17 +221,33 @@ function App() {
     fileInputRef.current.click();
   };
 
+  // --- NEW: Voice Note Handlers ---
+  const handleStartRecording = () => {
+    setIsRecording(true);
+    alert("Recording started... (Click mic again to stop)");
+    // In a real app, you'd start the MediaRecorder API here
+  };
+
+  const handleStopRecording = () => {
+    setIsRecording(false);
+    alert("Recording stopped... (Processing voice note...)");
+    // In a real app, you'd stop the recorder, get the audio blob,
+    // and send it to your API.
+  };
+  // --- END: Voice Note Handlers ---
+
   return (
     <Container>
-      {/* Header using new HeaderIconButton */}
+      {/* --- UPDATED: Header now only has Menu and Upgrade --- */}
       <Header>
-        <HeaderIconButton onClick={() => alert("Menu clicked")}>&#9776;</HeaderIconButton>
+        <HeaderIconButton onClick={() => alert("Menu & History clicked")}>
+          &#9776;
+        </HeaderIconButton>
         <UpgradeButton onClick={() => alert("Upgrade clicked")}>Upgrade</UpgradeButton>
-        <HeaderIconButton onClick={() => alert("History clicked")}>&#8635;</HeaderIconButton>
+        {/* --- REMOVED: History icon removed --- */}
       </Header>
       
       <ChatBox>
-        {/* Conditional "What can I help with?" message */}
         {messages.length === 0 && !typing ? (
           <EmptyChatContainer>
             What can I help with?
@@ -251,7 +264,6 @@ function App() {
           </MessagesContainer>
         )}
 
-        {/* Input Bar using default IconButton */}
         <InputContainer>
           <IconButton onClick={handleAttachmentClick}>+</IconButton>
           <input 
@@ -265,16 +277,20 @@ function App() {
             <TextInput
               type="text"
               value={input}
-              onChange={(e) => setInput(e.g.value)}
+              // --- FIX: Corrected 'e.g.value' to 'e.target.value' ---
+              onChange={(e) => setInput(e.target.value)}
               onKeyPress={handleKeyPress}
               placeholder="Ask ChatGPT"
             />
-            <IconButton onClick={() => alert("Voice input soon")}>🎤</IconButton>
+            {/* --- UPDATED: Mic button now uses new state and handlers --- */}
+            <IconButton 
+              onClick={isRecording ? handleStopRecording : handleStartRecording}
+              isRecording={isRecording}
+            >
+              🎤
+            </IconButton>
           </InputWrapper>
           
-          {/* Note: Kept your SendButton logic. The image has a voice button here, 
-            but that would require changing logic (which you asked not to do).
-          */}
           <SendButton onClick={sendMessage} disabled={!input.trim()}>
             ↑
           </SendButton>
